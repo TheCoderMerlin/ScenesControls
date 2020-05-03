@@ -115,7 +115,7 @@ public class TextLabel : Control {
     /// Calculates a new rect based upon the size of the text.
     open func calculateRect() -> Rect? {
         if let metrics = textMetric.currentMetrics {
-            var rect = metrics.fontBoundingBox()
+            var rect = metrics.actualBoundingBox()
             rect.inflate(by: controlStyle.padding)
             rect.topLeft = topLeft
             return rect
