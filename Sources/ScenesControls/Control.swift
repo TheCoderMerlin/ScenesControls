@@ -66,7 +66,6 @@ public class Control : ContainableRenderableEntity,
                    topLeft:topLeft, fixedSize:fixedSize)
     }
 
-
     // ********************************************************************************
     // API FOLLOWS
     // These functions may be over-ridden by descendant classes
@@ -81,7 +80,6 @@ public class Control : ContainableRenderableEntity,
         dispatcher.registerMouseUpHandler(handler:self)
         dispatcher.registerEntityMouseClickHandler(handler:self)
     }
-
 
     /// Teardown
     /// The default implementation unregisters all default event handlers
@@ -98,11 +96,7 @@ public class Control : ContainableRenderableEntity,
     /// and *mostRecentSize*.  If the *mostRecentSize* is not available,
     /// returns Rect.zero.
     open override func boundingRect() -> Rect {
-        if let size = mostRecentSize {
-            return Rect(topLeft:topLeft, size:size)
-        } else {
-            return Rect.zero
-        }
+        return currentRect ?? Rect.zero
     }
     
     /// EventHandler for EntityMouseEnter

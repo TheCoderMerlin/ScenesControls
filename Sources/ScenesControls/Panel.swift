@@ -1,7 +1,7 @@
 /*
 ScenesControls provides a Swift object library with support for common
 controls.  ScenesControls runs on top of Scenes and IGIS.
-Copyright (C) 2020 Tango Golf Digital, LLC
+Copyright (C) 2020-2021 Tango Golf Digital, LLC
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -20,20 +20,32 @@ import Scenes
 /// This class provides a rendered container for controls,
 /// visually grouping them together and providing the ability
 /// to easily reposition and layout the controls.
-public class Panel : RenderableEntityContainer {
+public class Panel : ControlContainer {
 
-    /// Determines the `LayoutStyle` to be used for this panel
+    /// Determines the `LayoutStyle` to be used for this panel.
     public enum LayoutStyle {
-        /// All controls are uniformly sized in a single row
+        /// All controls are uniformly sized in a single row.
         case uniformRow
-        /// All controls are uniformly sized in a single column
+        /// All controls are uniformly sized in a single column.
         case uniformColumn
-    }
-    
-    /// Stores the controlStyle to used for this control
-    public let controlStyle : ControlStyle
 
-    /// Specifies the layoutStyle to be used for this panel
+        /// All controls are placed in a single row with given vertical alignment.
+        case row(alignment:VerticalAlignment)
+        /// All controls are placed in a single column with given horizontal alignment.
+        case column(alignment:HorizontalAlignment)
+
+        /// All controls are placed in a single row aligned to the top.
+        public static var row : LayoutStyle {
+            return .row(alignment:.top)
+        }
+
+        /// All controls are placed in a single column aligned to the left.
+        public static var column : LayoutStyle {
+            return .column(alignment:.left)
+        }
+    }
+
+    /// Specifies the layoutStyle to be used for this panel.
     public var layoutStyle : LayoutStyle {
         didSet {
             // Force a recalculation to occur
@@ -46,74 +58,58 @@ public class Panel : RenderableEntityContainer {
                 layoutStyle:LayoutStyle = .uniformRow,
                 controlStyle:ControlStyle = ControlStyle()) {
         self.layoutStyle = layoutStyle
-        self.controlStyle = controlStyle
         super.init(name:name, 
-                   topLeft:topLeft, fixedSize:fixedSize)
+                   topLeft:topLeft, fixedSize:fixedSize,
+                   controlStyle:controlStyle)
     }
 
-    /// Recalculates the size of this panel using the specified layout
+    /// Recalculates the size of this panel using the specified layout.
     /// If it is not possible to recalculate the size (for example, because
-    /// children don't yet have a *currentCalculatedSize* the request is ignored
-    open override func recalculateSize() {
+    /// children don't yet have a *currentCalculatedSize* the request is ignored.
+    open override func calculateSize() -> Size? {
         if var rects = childRects {
+            // calculate sourceRect for children
             let targetWidth = Layout.property(attribute:.maxWidth, childRects:rects)
             let targetHeight = Layout.property(attribute:.maxHeight, childRects:rects)
-
+            let sourceRect = Rect(topLeft:topLeft + Point(x:controlStyle.padding, y:controlStyle.padding),
+                                  size:Size(width:targetWidth, height:targetHeight))
+        
+            // apply layout to child rects
             switch layoutStyle {
             case .uniformRow:
-                rects = Layout.apply(rule:.alignTops(top:topLeft.y + controlStyle.padding), childRects:rects)
-                rects = Layout.apply(rule:.alignWidths(width:targetWidth), childRects:rects)
-                rects = Layout.apply(rule:.alignHeights(height:targetHeight), childRects:rects)
-                rects = Layout.apply(rule:.distributeHorizontally(left:topLeft.x + controlStyle.padding, padding:controlStyle.padding), childRects:rects)
+                let alignment = Alignment(horizontal:.stretch, vertical:.stretch)
+                rects = alignment.apply(toRects:rects, sourceRect:sourceRect)
+                rects = Layout.apply(rule:.distributeHorizontally(left:sourceRect.left, spacing:controlStyle.padding), childRects:rects)
             case .uniformColumn:
-                rects = Layout.apply(rule:.alignLefts(left:topLeft.x + controlStyle.padding), childRects:rects)
-                rects = Layout.apply(rule:.alignWidths(width:targetWidth), childRects:rects)
-                rects = Layout.apply(rule:.alignHeights(height:targetHeight), childRects:rects)
-                rects = Layout.apply(rule:.distributeVertically(top:topLeft.y + controlStyle.padding, padding:controlStyle.padding), childRects:rects)
+                let alignment = Alignment(horizontal:.stretch, vertical:.stretch)
+                rects = alignment.apply(toRects:rects, sourceRect:sourceRect)
+                rects = Layout.apply(rule:.distributeVertically(top:sourceRect.top, spacing:controlStyle.padding), childRects:rects)
+            case .row(let alignment):
+                rects = alignment.apply(toRects:rects, sourceRect:sourceRect)
+                rects = Layout.apply(rule:.distributeHorizontally(left:sourceRect.left, spacing:controlStyle.padding), childRects:rects)
+            case .column(let alignment):
+                rects = alignment.apply(toRects:rects, sourceRect:sourceRect)
+                rects = Layout.apply(rule:.distributeVertically(top:sourceRect.top, spacing:controlStyle.padding), childRects:rects)
             }
-            
+
             // Apply the new rects to the entities
             childRects = rects
 
             // Set our own size
             let width  = Layout.property(attribute:.fullWidth, childRects:rects) + controlStyle.padding * 2
             let height = Layout.property(attribute:.fullHeight, childRects:rects) + controlStyle.padding * 2
-            currentCalculatedSize = Size(width:width, height:height)
+            return Size(width:width, height:height)
         }
-    }
-
-    /// Based upon the most recent size available and the current
-    /// position, returns the rect to be used for rendering.
-    open func currentRect() -> Rect? {
-        if let size = mostRecentSize {
-            return Rect(topLeft:topLeft, size:size)
-        } else {
-            return nil
-        }
-    }
-
-
-    /// If necessary, invokes *recalculateSize()* to calculate and
-    /// update the *currentCalculatedSize*.
-    open override func calculate(canvasSize:Size) {
-        super.calculate(canvasSize:canvasSize)
-
-        // If we don't have a size, we calculate it here
-        if currentCalculatedSize == nil {
-            recalculateSize()
-        }
+        
+        return nil
     }
 
     /// Renders the panel.  Contained controls are responsible for rendering themselves.
     open override func render(canvas:Canvas) {
         // Render if panel size is known
-        if let rect = currentRect() {
+        if let rect = currentRect {
             let rectangle = Rectangle(rect:rect, fillMode:.fillAndStroke)
             canvas.render(controlStyle.panelStrokeStyle, controlStyle.panelFillStyle, rectangle)
         }
-        
     }
-
 }
-
-

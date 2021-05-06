@@ -38,20 +38,6 @@ public class Button : TextLabel {
     // These functions may be over-ridden by descendant classes
     // ********************************************************************************
     
-    /// Based upon the most recent size available and the current
-    /// position, returns the rect to be used for rendering.
-    open override func currentRect() -> Rect? {
-        // Offset the currentRect if the button is pressed
-        if var rect = super.currentRect() {
-            if isMouseOver && isMouseDown {
-                rect.topLeft += Self.buttonDownOffset
-            }
-            return rect
-        } else {
-            return nil
-        }
-    }
-
     /// Renders the `Button`
     open override func render(canvas:Canvas) {
         // Determine metrics if required
@@ -60,7 +46,11 @@ public class Button : TextLabel {
         } 
 
         // Render button if size is known
-        if let rect = currentRect() {
+        if var rect = currentRect {
+            if isMouseOver && isMouseDown {
+                rect.topLeft += Self.buttonDownOffset
+            }
+            
             let backgroundFillStyle = isMouseOver ? controlStyle.backgroundHoverFillStyle : controlStyle.backgroundFillStyle
             let roundingRadius = Int(controlStyle.roundingPercentage * Double(min(rect.size.width, rect.size.height)))
             let path = Path(rect:rect, radius:roundingRadius, fillMode:.fillAndStroke)
@@ -78,7 +68,5 @@ public class Button : TextLabel {
             cursorStyle = controlStyle.normalCursorStyle
             canvas.render(CursorStyle(style: cursorStyle))
         }
-        
     }
-    
 }

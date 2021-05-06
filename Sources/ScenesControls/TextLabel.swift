@@ -67,7 +67,6 @@ public class TextLabel : Control {
                    controlStyle:controlStyle)
     }
 
-
     open override func sizeChanged() {
         // If the size has changed and we have a fixed size, we'll need a new clipPath
         needNewClipPath = fixedSize != nil
@@ -78,7 +77,6 @@ public class TextLabel : Control {
         needNewClipPath = fixedSize != nil
     }
 
-    
     // ********************************************************************************
     // API FOLLOWS
     // ********************************************************************************
@@ -113,22 +111,11 @@ public class TextLabel : Control {
     }
 
     /// Calculates a new rect based upon the size of the text.
-    open func calculateRect() -> Rect? {
+    open override func calculateSize() -> Size? {
         if let metrics = textMetric.currentMetrics {
-            var rect = metrics.actualBoundingBox()
-            rect.inflate(by: controlStyle.padding)
-            rect.topLeft = topLeft
-            return rect
-        } else {
-            return nil
-        }
-    }
-
-    /// Based upon the most recent size available and the current
-    /// position, returns the rect to be used for rendering.
-    open func currentRect() -> Rect? {
-        if let size = mostRecentSize {
-            return Rect(topLeft:topLeft, size:size)
+            var size = metrics.actualBoundingBox().size
+            size.enlarge(by:controlStyle.padding * 2)
+            return size
         } else {
             return nil
         }
@@ -138,19 +125,12 @@ public class TextLabel : Control {
     /// update the *currentCalculatedSize*.
     open override func calculate(canvasSize:Size) {
         super.calculate(canvasSize:canvasSize)
-        
-        // If we don't have a size, we calculate it here
-        if currentCalculatedSize == nil {
-            if let rect = calculateRect() {
-                currentCalculatedSize = rect.size
-            }
-        }
 
         // If we have a fixed size then it's not calculated based upon text size
         // As a consequence, the text may exceed the bounds of the object
         // We therefore apply a clipping path
         if needNewClipPath { 
-            if let rect = currentRect() {
+            if let rect = currentRect {
                 let path = Path(rect:rect)
                 setClipPath(clipPath:ClipPath(path:path))
             }
@@ -167,7 +147,7 @@ public class TextLabel : Control {
         } 
 
         // Render label if size is known
-        if let rect = currentRect() {
+        if let rect = currentRect {
             let rectangle = Rectangle(rect:rect, fillMode:.fillAndStroke)
             if controlStyle.labelsDisplayEnclosingRect {
                 canvas.render(controlStyle.foregroundStrokeStyle, controlStyle.backgroundFillStyle, rectangle)
@@ -175,6 +155,5 @@ public class TextLabel : Control {
             text.location = rect.center
             canvas.render(controlStyle.textStrokeStyle, controlStyle.textFillStyle, text)
         }
-        
     }
 }
